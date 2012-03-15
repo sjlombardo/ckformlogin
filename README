@@ -1,0 +1,108 @@
+CkFormLogin 1.0
+
+Access Management / Form Login Monitor for Nagios
+
+Identicentric's CkFormLogin is an open source (GPL Licensed) plug-in for the excellent Nagios network monitoring system that makes it more useful in the context of Access Management and Single Sign-on environments. Originally developed to monitor Oracle Access Manager protected web sites, CkFormLogin works by validating each and every step in the form login process common to most Access Management systems. Use it to:
+
+    * Continuously verify the "end-user" functionality of commercial access management products like Oracle COREid Access Manager, CA eTrust Siteminder, and Sun Access Manager
+    * Detect outages in secure websites caused by externalized security components or integration issues
+    * Quickly and easily verify system stability after large configuration changes
+    * Track uptime and availability for your critical access management integrations
+    * Immediately notify support personnel when a problem occurs
+
+Questions, comments, patches? Please send them to support@identicentric.com
+
+Installation & Configuration
+
+Step 1: Install Nagios
+
+    Download Nagios from the official website and install it according to the comprehensive documentation. 
+    http://www.nagios.org/download/
+    http://nagios.sourceforge.net/docs/2_0/installing.html
+
+Step 2: Verify Perl Dependencies
+
+    Ensure that Perl is installed on the target system, and verify that the plug-in's dependencies are met by executing the following commands:
+
+      perl -MGetopt::Std -e "0"
+      perl -MNet::SSL -e "0"
+      perl -MMLWP::UserAgent -e "0"
+      perl -MHTTP::Cookies -e "0"
+      
+
+    If any of the commands return errors then that package is not installed. Simply install the dependencies using your favorite OS package manager, or using CPAN, like this:
+
+      # perl -MCPAN -e "shell"
+      cpan shell -- CPAN exploration and modules installation (v1.7601)
+      cpan> install Getopt::Std
+      ...
+      cpan> install Net::SSL
+      ...
+      cpan> install LWP
+      ...
+      cpan> install HTTP::Cookies
+      
+
+Step 3: Install CkFormLogin Plug-in
+
+    Start by downloading ckformlogin-1.0.tar.gz from the Identicentric website. Unpack the plug-in and copy it into the Nagios libexec directory (/usr/local/nagios/libexec).
+
+      wget http://www.identicentric.com/products/ckformlogin/ckformlogin-1.0.tar.gz
+      gunzip -c ckformlogin-1.0.tar.gz | tar xf -
+      cp ckformlogin-1.0/ckformlogin.pl /usr/local/nagios/libexec
+      
+
+Step 4: Register CkFormLogin with Nagios
+
+    Add the following stanza to your Nagios configuration file (nagios.cfg, checkcommands.cfg, etc). Note the command_line should be a single line.
+
+      define command{
+            command_name  ckformlogin
+            command_line  $USER1$/ckformlogin.pl -u $ARG1$ -p $ARG2$ -a $ARG3$ 
+                            -l $ARG4$ -t $ARG5$ $ARG6$
+      }
+      
+
+Step 5: Configure Services
+
+    Add one or more ckformlogin services using in the appropriate configuration file (nagios.cfg, services.cfg, etc). You should define one service for each "access management" enabled host in your environment. Note that the "userid" and "password" parameters should be adjusted to reflect the parameters in the protected sites login form. The check_command value should all be on one line (breaks added for readability)
+
+      define service{
+            use                    generic-service         
+            host_name              <hostname to monitor>
+            service_description    <description>
+            is_volatile            0
+            check_period           24x7
+            max_check_attempts     4
+            normal_check_interval  5
+            retry_check_interval   1
+            contact_groups         admins
+            notification_options   w,u,c,r
+            notification_interval  960
+            notification_period    24x7
+            check_command          ckformlogin!"<URL to check>"!
+                                   "userid=<username>&password=<password>"!
+                                   "<Action URL to post credentials >"!
+                                   "<login page content check value>"!
+                                   "<target page content check value>"
+            }
+
+      
+
+Oracle Access Manager Example
+
+    This example configuration will monitor an Oracle Access Manager protected site configured for "Form" or "Form Multi-domain Single sign-on" authentication.
+
+      define service{
+            use             generic-service         
+            host_name       secure.identicentric.com
+              ...
+            check_command   ckformlogin!"http://secure.identicentric.com/securepage.aspx"!
+                            "userid=testuser&password=secret"!
+                            "https://secure.identicentric.com/access/oblix/apps/webgate/bin/webgate.dll"!
+                            "Access Manager Login Page"!
+                            "Welcome: testuser"
+            }
+      
+
+
